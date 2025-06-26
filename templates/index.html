@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Audio Recorder with Address Form</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #333;
+    }
+
+    h2,
+    h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    #recordButton {
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 20px;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    #recordButton:hover {
+      background-color: #1f6391;
+    }
+
+    #statusMessage {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #16a085;
+    }
+
+    .form-section {
+      margin-top: 40px;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    form label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+      color: #34495e;
+    }
+
+    form input {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    form input:focus {
+      border-color: #2980b9;
+      outline: none;
+    }
+
+    form button[type="submit"] {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 20px;
+      font-size: 16px;
+      margin-top: 25px;
+      transition: background-color 0.3s;
+      width: 100%;
+    }
+
+    form button[type="submit"]:hover {
+      background-color: #1e8449;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <h2>Audio Recorder</h2>
+  <button id="recordButton">Start Recording</button>
+  <div id="statusMessage" style="margin-top: 20px; font-weight: bold;"></div>
+
+  <div class="form-section">
+    <h3>Enter Your Address</h3>
+    <form id="addressForm">
+
+      <label for="house_no">House No / Flat No / Building No / Apartment No <span style="color:red">*</span></label>
+      <input type="text" id="house_no" name="house_no" required placeholder="e.g., 742 or Apt 5B" />
+
+      <label for="street">Street Name / Lane / Gali <span style="color:red">*</span></label>
+      <input type="text" id="street" name="street" required placeholder="e.g., Evergreen Terrace" />
+
+      <label for="unit">Unit / Suite / Block (Optional)</label>
+      <input type="text" id="unit" name="unit" placeholder="e.g., Suite 101" />
+
+      <label for="landmark">Landmark (Optional)</label>
+      <input type="text" id="landmark" name="landmark" placeholder="e.g., Near Kwik-E-Mart" />
+
+      <label for="borough">Borough (For NYC and similar cities) (Optional)</label>
+      <input type="text" id="borough" name="borough" placeholder="e.g., Manhattan" />
+
+      <label for="county">County (Optional)</label>
+      <input type="text" id="county" name="county" placeholder="e.g., Sangamon County" />
+
+      <label for="city">City / Town / District <span style="color:red">*</span></label>
+      <input type="text" id="city" name="city" required placeholder="e.g., Springfield" />
+
+      <label for="state">State / Province / Region <span style="color:red">*</span></label>
+      <input type="text" id="state" name="state" required placeholder="e.g., New York" />
+
+      <label for="zipcode">Zip Code / Postal Code <span style="color:red">*</span></label>
+      <input type="text" id="zipcode" name="zipcode" required pattern="\d{5}(-\d{4})?"
+        placeholder="e.g., 62704 or 62704-1234" />
+
+      <label for="country">Country <span style="color:red">*</span></label>
+      <input type="text" id="country" name="country" required placeholder="e.g., United States" />
+
+      <button type="submit">Submit Address</button>
+    </form>
+  </div>
+
+  <audio id="promptAudio" src="/static/prompt.mp3" preload="auto"></audio>
+
+  <script>
+    const recordButton = document.getElementById("recordButton");
+    const statusMessage = document.getElementById('statusMessage');
+    const form = document.getElementById('addressForm');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    const promptAudio = document.getElementById("promptAudio");
+
+recordButton.addEventListener("click", async () => {
+  if (!isRecording) {
+    recordButton.disabled = true;
+    statusMessage.textContent = "Playing prompt...";
+
+    // Play prompt audio
+    promptAudio.play();
+
+    promptAudio.onended = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = e => {
+        audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+
+        statusMessage.textContent = "Uploading audio...";
+        try {
+          const uploadResponse = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!uploadResponse.ok) {
+            statusMessage.textContent = "Audio upload failed.";
+            return;
+          }
+
+          statusMessage.textContent = "Processing address...";
+
+          const addressResponse = await fetch('/get-address');
+          if (!addressResponse.ok) {
+            statusMessage.textContent = "Failed to fetch address.";
+            return;
+          }
+
+          const addressData = await addressResponse.json();
+
+          form.zipcode.value = addressData.zipcode || '';
+          form.house_no.value = addressData.house_no || '';
+          form.street.value = addressData.street || addressData.lane || '';
+          form.unit.value = addressData.unit || '';
+          form.landmark.value = addressData.landmark || addressData.Landmark || '';
+          form.borough.value = addressData.borough || '';
+          form.county.value = addressData.county || '';
+          form.city.value = addressData.city || '';
+          form.state.value = addressData.state || '';
+          form.country.value = addressData.country || '';
+
+          statusMessage.textContent = "Address loaded!";
+        } catch (error) {
+          statusMessage.textContent = "Error: " + error.message;
+        }
+      };
+
+      mediaRecorder.start();
+      recordButton.textContent = "Stop Recording";
+      statusMessage.textContent = "Recording... Speak now.";
+      isRecording = true;
+      recordButton.disabled = false;
+    };
+  } else {
+    mediaRecorder.stop();
+    recordButton.textContent = "Start Recording";
+    isRecording = false;
+  }
+});
+
+
+
+
+    // Optional: Handle address form submission
+    document.getElementById("addressForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      await fetch('/submit-address', {
+        method: 'POST',
+        body: formData
+      });
+      alert("Address submitted!");
+      this.reset();
+    });
+  </script>
+</body>
+
+</html>
