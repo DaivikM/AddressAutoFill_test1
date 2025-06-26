@@ -3,243 +3,733 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Audio Recorder with Address Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Address Autofill Assistant</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --primary-color: #1a202c;
+      --primary-light: #2d3748;
+      --accent-color: #4a5568;
+      --accent-hover: #2d3748;
+      --success-color: #2d3748;
+      --success-hover: #1a202c;
+      --error-color: #718096;
+      --warning-color: #a0aec0;
+      --light-bg: #f7fafc;
+      --form-bg: #ffffff;
+      --text-color: #2d3748;
+      --text-light: #4a5568;
+      --text-muted: #718096;
+      --border-color: #e2e8f0;
+      --border-focus: #cbd5e0;
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --gradient-bg: linear-gradient(135deg, #f7fafc 0%, #edf2f7 50%, #e2e8f0 100%);
+      --glass-bg: rgba(255, 255, 255, 0.8);
+      --glass-border: rgba(226, 232, 240, 0.5);
+      --recording-color: #4a5568;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fa;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
-      padding: 40px;
+      background: var(--gradient-bg);
+      color: var(--text-color);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(45, 55, 72, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(113, 128, 150, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(160, 174, 192, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
       display: flex;
       flex-direction: column;
       align-items: center;
-      color: #333;
+      min-height: 100vh;
+      position: relative;
     }
 
-    h2,
-    h3 {
-      color: #2c3e50;
-      margin-bottom: 10px;
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    .header h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      color: var(--primary-color);
+      margin: 0 0 0.5rem 0;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      letter-spacing: -0.02em;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      color: var(--text-light);
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .voice-section {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .voice-section.fixed-bottom-right {
+  position: fixed;
+  bottom: 0px;
+  right: 10px;
+  z-index: 1000;
+  width: auto;
+  max-width: 300px;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+}
+
+
+    .voice-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(45, 55, 72, 0.05), transparent);
+      transition: left 0.6s;
+    }
+
+    .voice-section:hover::before {
+      left: 100%;
+    }
+
+    .record-container {
+      position: relative;
+      display: inline-block;
     }
 
     #recordButton {
-      background-color: #2980b9;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
       color: white;
       border: none;
-      border-radius: 6px;
-      padding: 12px 20px;
-      font-size: 16px;
-      transition: background-color 0.3s;
+      border-radius: 50px;
+      padding: 1rem 2.5rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      min-width: 200px;
     }
 
-    #recordButton:hover {
-      background-color: #1f6391;
+    #recordButton:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(26, 32, 44, 0.25);
+      background: linear-gradient(135deg, var(--primary-light), var(--accent-color));
     }
+
+    #recordButton:active {
+      transform: translateY(0);
+    }
+
+    #recordButton:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #recordButton.recording {
+      background: linear-gradient(135deg, var(--recording-color), var(--primary-light));
+      animation: pulse 2s infinite;
+    }
+
+    .sound-waves {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      margin-top: 1.5rem;
+    }
+
+    .sound-waves.active {
+      display: flex;
+    }
+
+    .wave {
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(to top, var(--primary-color), var(--accent-color));
+      border-radius: 2px;
+      animation: soundWave 1.5s ease-in-out infinite;
+    }
+
+    .wave:nth-child(2) { animation-delay: 0.1s; }
+    .wave:nth-child(3) { animation-delay: 0.2s; }
+    .wave:nth-child(4) { animation-delay: 0.3s; }
+    .wave:nth-child(5) { animation-delay: 0.4s; }
+    .wave:nth-child(6) { animation-delay: 0.3s; }
+    .wave:nth-child(7) { animation-delay: 0.2s; }
+    .wave:nth-child(8) { animation-delay: 0.1s; }
 
     #statusMessage {
-      margin-top: 20px;
-      font-weight: bold;
-      color: #16a085;
+      margin-top: 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-color);
+      min-height: 24px;
+      transition: all 0.3s ease;
+    }
+
+    #statusMessage.success {
+      color: var(--primary-color);
+    }
+
+    #statusMessage.error {
+      color: var(--text-muted);
+    }
+
+    #statusMessage.processing {
+      color: var(--text-light);
     }
 
     .form-section {
-      margin-top: 40px;
-      padding: 30px;
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       width: 100%;
-      max-width: 500px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 20px;
+      padding: 2.5rem;
+      box-shadow: var(--shadow-lg);
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+      position: relative;
+    }
+
+    .form-section h3 {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      margin: 0 0 2rem 0;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .form-group {
+      position: relative;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
     }
 
     form label {
       display: block;
-      margin-top: 15px;
+      margin-bottom: 0.5rem;
       font-weight: 500;
-      color: #34495e;
+      color: var(--text-color);
+      font-size: 0.9rem;
+    }
+
+    .required {
+      color: var(--text-muted);
     }
 
     form input {
       width: 100%;
-      padding: 10px 12px;
-      margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-sizing: border-box;
-      font-size: 14px;
-      transition: border-color 0.3s;
+      padding: 0.875rem 1rem;
+      font-size: 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      font-family: inherit;
     }
 
     form input:focus {
-      border-color: #2980b9;
+      border-color: var(--border-focus);
       outline: none;
+      box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.1);
+      transform: translateY(-1px);
+    }
+
+    form input:valid {
+      border-color: var(--primary-light);
+    }
+
+    form input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .submit-container {
+      grid-column: 1 / -1;
+      margin-top: 1rem;
     }
 
     form button[type="submit"] {
-      background-color: #27ae60;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
       color: white;
       border: none;
-      border-radius: 6px;
-      padding: 12px 20px;
-      font-size: 16px;
-      margin-top: 25px;
-      transition: background-color 0.3s;
+      border-radius: 12px;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
       width: 100%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-md);
+      font-family: inherit;
     }
 
     form button[type="submit"]:hover {
-      background-color: #1e8449;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(26, 32, 44, 0.25);
+      background: linear-gradient(135deg, var(--primary-light), var(--accent-color));
+    }
+
+    form button[type="submit"]:active {
+      transform: translateY(0);
+    }
+
+    .loading-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+
+    .loading-spinner.active {
+      display: inline-block;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(74, 85, 104, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(74, 85, 104, 0);
+      }
+    }
+
+    @keyframes soundWave {
+      0%, 100% {
+        height: 20px;
+        opacity: 0.4;
+      }
+      50% {
+        height: 40px;
+        opacity: 1;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200px 0;
+      }
+      100% {
+        background-position: calc(200px + 100%) 0;
+      }
+    }
+
+    /* Responsive Design */
+    @media screen and (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .voice-section,
+      .form-section {
+        padding: 1.5rem;
+        border-radius: 16px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      #recordButton {
+        width: 100%;
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+    }
+
+    @media screen and (max-width: 480px) {
+      .header p {
+        font-size: 1rem;
+      }
+
+      .voice-section,
+      .form-section {
+        padding: 1rem;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .form-section {
+        background: rgba(45, 55, 72, 0.95);
+        color: white;
+      }
+
+      form input {
+        background: rgba(74, 85, 104, 0.3);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: white;
+      }
+
+      form input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      form label {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .form-section h3 {
+        color: white;
+      }
+    }
+
+    audio {
+      display: none;
     }
   </style>
-
 </head>
 
 <body>
+  <div class="container">
+    <div class="header">
+      <h1>Address Autofill Assistant</h1>
+      <p>Speak your address and watch it auto-populate the form</p>
+    </div>
 
-  <h2>Audio Recorder</h2>
-  <button id="recordButton">Start Recording</button>
-  <div id="statusMessage" style="margin-top: 20px; font-weight: bold;"></div>
+    <div class="voice-section fixed-bottom-right">
+      <div class="record-container">
+        <button id="recordButton">
+          <span class="loading-spinner" id="loadingSpinner"></span>
+          <span id="buttonText">Start Voice Input</span>
+        </button>
+      </div>
+      
+      <div class="sound-waves" id="soundWaves">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+      </div>
+      
+      <div id="statusMessage"></div>
+    </div>
 
-  <div class="form-section">
-    <h3>Enter Your Address</h3>
-    <form id="addressForm">
+    <div class="form-section">
+      <h3>Enter Your Address</h3>
+      <form id="addressForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="house_no">House No / Flat No <span class="required">*</span></label>
+            <input type="text" id="house_no" name="house_no" required placeholder="e.g., 742 or Apt 5B" />
+          </div>
 
-      <label for="house_no">House No / Flat No / Building No / Apartment No <span style="color:red">*</span></label>
-      <input type="text" id="house_no" name="house_no" required placeholder="e.g., 742 or Apt 5B" />
+          <div class="form-group">
+            <label for="street">Street Name / Lane <span class="required">*</span></label>
+            <input type="text" id="street" name="street" required placeholder="e.g., Evergreen Terrace" />
+          </div>
 
-      <label for="street">Street Name / Lane / Gali <span style="color:red">*</span></label>
-      <input type="text" id="street" name="street" required placeholder="e.g., Evergreen Terrace" />
+          <div class="form-group">
+            <label for="unit">Unit / Suite / Block</label>
+            <input type="text" id="unit" name="unit" placeholder="e.g., Suite 101" />
+          </div>
 
-      <label for="unit">Unit / Suite / Block (Optional)</label>
-      <input type="text" id="unit" name="unit" placeholder="e.g., Suite 101" />
+          <div class="form-group">
+            <label for="landmark">Landmark</label>
+            <input type="text" id="landmark" name="landmark" placeholder="e.g., Near Kwik-E-Mart" />
+          </div>
 
-      <label for="landmark">Landmark (Optional)</label>
-      <input type="text" id="landmark" name="landmark" placeholder="e.g., Near Kwik-E-Mart" />
+          <div class="form-group">
+            <label for="borough">Borough</label>
+            <input type="text" id="borough" name="borough" placeholder="e.g., Manhattan" />
+          </div>
 
-      <label for="borough">Borough (For NYC and similar cities) (Optional)</label>
-      <input type="text" id="borough" name="borough" placeholder="e.g., Manhattan" />
+          <div class="form-group">
+            <label for="county">County</label>
+            <input type="text" id="county" name="county" placeholder="e.g., Sangamon County" />
+          </div>
 
-      <label for="county">County (Optional)</label>
-      <input type="text" id="county" name="county" placeholder="e.g., Sangamon County" />
+          <div class="form-group">
+            <label for="city">City / Town / District <span class="required">*</span></label>
+            <input type="text" id="city" name="city" required placeholder="e.g., Springfield" />
+          </div>
 
-      <label for="city">City / Town / District <span style="color:red">*</span></label>
-      <input type="text" id="city" name="city" required placeholder="e.g., Springfield" />
+          <div class="form-group">
+            <label for="state">State / Province <span class="required">*</span></label>
+            <input type="text" id="state" name="state" required placeholder="e.g., New York" />
+          </div>
 
-      <label for="state">State / Province / Region <span style="color:red">*</span></label>
-      <input type="text" id="state" name="state" required placeholder="e.g., New York" />
+          <div class="form-group">
+            <label for="zipcode">Zip Code / Postal Code <span class="required">*</span></label>
+            <input type="text" id="zipcode" name="zipcode" required pattern="\d{5}(-\d{4})?" placeholder="e.g., 62704" />
+          </div>
 
-      <label for="zipcode">Zip Code / Postal Code <span style="color:red">*</span></label>
-      <input type="text" id="zipcode" name="zipcode" required pattern="\d{5}(-\d{4})?"
-        placeholder="e.g., 62704 or 62704-1234" />
+          <div class="form-group full-width">
+            <label for="country">Country <span class="required">*</span></label>
+            <input type="text" id="country" name="country" required placeholder="e.g., United States" />
+          </div>
 
-      <label for="country">Country <span style="color:red">*</span></label>
-      <input type="text" id="country" name="country" required placeholder="e.g., United States" />
+          <div class="submit-container">
+            <button type="submit">
+              <span class="loading-spinner" id="submitSpinner"></span>
+              <span id="submitText">Submit Address</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
 
-      <button type="submit">Submit Address</button>
-    </form>
+    <audio id="promptAudio" src="/static/prompt.mp3" preload="auto"></audio>
   </div>
-
-  <audio id="promptAudio" src="/static/prompt.mp3" preload="auto"></audio>
 
   <script>
     const recordButton = document.getElementById("recordButton");
+    const buttonText = document.getElementById("buttonText");
     const statusMessage = document.getElementById('statusMessage');
+    const soundWaves = document.getElementById('soundWaves');
+    const loadingSpinner = document.getElementById('loadingSpinner');
     const form = document.getElementById('addressForm');
+    const promptAudio = document.getElementById("promptAudio");
+    const submitSpinner = document.getElementById('submitSpinner');
+    const submitText = document.getElementById('submitText');
 
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
 
-    const promptAudio = document.getElementById("promptAudio");
+    function updateStatus(message, type = '') {
+      statusMessage.textContent = message;
+      statusMessage.className = type;
+    }
 
-recordButton.addEventListener("click", async () => {
-  if (!isRecording) {
-    recordButton.disabled = true;
-    statusMessage.textContent = "Playing prompt...";
+    function setButtonState(text, isLoading = false, isRecording = false) {
+      buttonText.textContent = text;
+      loadingSpinner.classList.toggle('active', isLoading);
+      recordButton.classList.toggle('recording', isRecording);
+      soundWaves.classList.toggle('active', isRecording);
+    }
 
-    // Play prompt audio
-    promptAudio.play();
+    recordButton.addEventListener("click", async () => {
+      if (!isRecording) {
+        recordButton.disabled = true;
+        setButtonState("Initializing...", true);
+        updateStatus("Playing prompt...", "processing");
+        
+        promptAudio.play();
 
-    promptAudio.onended = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+        promptAudio.onended = async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
 
-      audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-      mediaRecorder.ondataavailable = e => {
-        audioChunks.push(e.data);
-      };
+            mediaRecorder.onstop = async () => {
+              // Stop all tracks to release microphone
+              stream.getTracks().forEach(track => track.stop());
+              
+              const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+              const formData = new FormData();
+              formData.append('audio', audioBlob, 'recording.webm');
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
+              setButtonState("Processing...", true);
+              updateStatus("Uploading audio...", "processing");
 
-        statusMessage.textContent = "Uploading audio...";
-        try {
-          const uploadResponse = await fetch('/upload', {
-            method: 'POST',
-            body: formData
-          });
+              try {
+                const uploadResponse = await fetch('/upload', {
+                  method: 'POST',
+                  body: formData
+                });
 
-          if (!uploadResponse.ok) {
-            statusMessage.textContent = "Audio upload failed.";
-            return;
+                if (!uploadResponse.ok) {
+                  throw new Error("Audio upload failed");
+                }
+
+                updateStatus("Processing address...", "processing");
+
+                const addressResponse = await fetch('/get-address');
+                if (!addressResponse.ok) {
+                  throw new Error("Failed to fetch address");
+                }
+
+                const addressData = await addressResponse.json();
+
+                // Animate form fields as they get filled
+                const fields = [
+                  { element: form.zipcode, value: addressData.zipcode },
+                  { element: form.house_no, value: addressData.house_no },
+                  { element: form.street, value: addressData.street || addressData.lane },
+                  { element: form.unit, value: addressData.unit },
+                  { element: form.landmark, value: addressData.landmark },
+                  { element: form.borough, value: addressData.borough },
+                  { element: form.county, value: addressData.county },
+                  { element: form.city, value: addressData.city },
+                  { element: form.state, value: addressData.state },
+                  { element: form.country, value: addressData.country }
+                ];
+
+                // Fill fields with animation delay
+                fields.forEach((field, index) => {
+                  setTimeout(() => {
+                    if (field.value) {
+                      field.element.value = field.value;
+                      field.element.style.transform = 'scale(1.02)';
+                      field.element.style.borderColor = 'var(--primary-light)';
+                      setTimeout(() => {
+                        field.element.style.transform = '';
+                      }, 200);
+                    }
+                  }, index * 100);
+                });
+
+                updateStatus("Address loaded successfully! ✨", "success");
+              } catch (error) {
+                updateStatus("Error: " + error.message, "error");
+              } finally {
+                setButtonState("Start Voice Input");
+                recordButton.disabled = false;
+              }
+            };
+
+            mediaRecorder.start();
+            setButtonState("Stop Recording", false, true);
+            updateStatus("Recording... Speak your address now", "processing");
+            isRecording = true;
+            recordButton.disabled = false;
+          } catch (error) {
+            updateStatus("Microphone access denied", "error");
+            setButtonState("Start Voice Input");
+            recordButton.disabled = false;
           }
+        };
+      } else {
+        mediaRecorder.stop();
+        setButtonState("Processing...", true);
+        updateStatus("Processing your recording...", "processing");
+        isRecording = false;
+      }
+    });
 
-          statusMessage.textContent = "Processing address...";
-
-          const addressResponse = await fetch('/get-address');
-          if (!addressResponse.ok) {
-            statusMessage.textContent = "Failed to fetch address.";
-            return;
-          }
-
-          const addressData = await addressResponse.json();
-
-          form.zipcode.value = addressData.zipcode || '';
-          form.house_no.value = addressData.house_no || '';
-          form.street.value = addressData.street || addressData.lane || '';
-          form.unit.value = addressData.unit || '';
-          form.landmark.value = addressData.landmark || addressData.Landmark || '';
-          form.borough.value = addressData.borough || '';
-          form.county.value = addressData.county || '';
-          form.city.value = addressData.city || '';
-          form.state.value = addressData.state || '';
-          form.country.value = addressData.country || '';
-
-          statusMessage.textContent = "Address loaded!";
-        } catch (error) {
-          statusMessage.textContent = "Error: " + error.message;
-        }
-      };
-
-      mediaRecorder.start();
-      recordButton.textContent = "Stop Recording";
-      statusMessage.textContent = "Recording... Speak now.";
-      isRecording = true;
-      recordButton.disabled = false;
-    };
-  } else {
-    mediaRecorder.stop();
-    recordButton.textContent = "Start Recording";
-    isRecording = false;
-  }
-});
-
-
-
-
-    // Optional: Handle address form submission
-    document.getElementById("addressForm").addEventListener("submit", async function (e) {
+    form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      const formData = new FormData(this);
-      await fetch('/submit-address', {
-        method: 'POST',
-        body: formData
+      
+      submitSpinner.classList.add('active');
+      submitText.textContent = "Submitting...";
+      
+      try {
+        const formData = new FormData(this);
+        const response = await fetch('/submit-address', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          // Success animation
+          submitText.textContent = "Success! ✓";
+          setTimeout(() => {
+            alert("Address submitted successfully!");
+            this.reset();
+            submitText.textContent = "Submit Address";
+          }, 1000);
+        } else {
+          throw new Error("Submission failed");
+        }
+      } catch (error) {
+        submitText.textContent = "Failed to submit";
+        setTimeout(() => {
+          submitText.textContent = "Submit Address";
+        }, 2000);
+      } finally {
+        submitSpinner.classList.remove('active');
+      }
+    });
+
+    // Add input focus animations
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'translateY(-2px)';
       });
-      alert("Address submitted!");
-      this.reset();
+      
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = '';
+      });
     });
   </script>
 </body>
